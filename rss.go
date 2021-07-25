@@ -150,6 +150,8 @@ type rssChannel struct {
 	ItunesAuthor     string            `xml:"itunes:author,omitempty"`
 	ItunesOwner      *itunesOwner      `xml:"itunes:owner,omitempty"`
 	ItunesTitle      string            `xml:"itunes:title,omitempty"`
+	ItunesType       string            `xml:"itunes:type,omitempty"`
+	ItunesComplete   string            `xml:"itunes:complete,omitempty"`
 
 	Items []*rssItem `xml:"item"`
 }
@@ -231,15 +233,21 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d", hh, mm, ss)
 }
 
-// Itunes describes an Apple Podcasts (iTunes)-supported RSS feed.
-type Itunes struct {
+// ApplePodcast describes an Apple Podcasts (iTunes)-supported RSS feed.
+type ApplePodcast struct {
 	// Categories defines a list of (possibly nested) categories for the Apple Podcast directory.
 	Categories []Category
+
+	// Type of show: episodic or serial.
+	Type string
+
+	// Complete should be true if the podcast will never have more episodes.
+	Complete bool
 }
 
-func (Itunes) name() string { return "itunes" }
+func (ApplePodcast) name() string { return "ApplePodcast" }
 
-func (i Itunes) populate(f Feed, rss *rssXML) error {
+func (ap ApplePodcast) populate(f Feed, rss *rssXML) error {
 	if rss == nil || rss.Channel == nil {
 		return nil
 	}
@@ -248,8 +256,8 @@ func (i Itunes) populate(f Feed, rss *rssXML) error {
 	if f.Image != nil {
 		rss.Channel.ItunesImage = &itunesImage{Href: f.Image.URL}
 	}
-	for _, cat := range i.Categories {
-		rss.Channel.ItunesCategories = append(rss.Channel.ItunesCategories, i.newCategory(&cat))
+	for _, cat := range ap.Categories {
+		rss.Channel.ItunesCategories = append(rss.Channel.ItunesCategories, ap.newCategory(&cat))
 	}
 	rss.Channel.ItunesExplicit = strconv.FormatBool(f.Explicit)
 	if f.Author != nil {
@@ -262,17 +270,23 @@ func (i Itunes) populate(f Feed, rss *rssXML) error {
 		}
 	}
 
+	rss.Channel.ItunesType = ap.Type
+
+	if ap.Complete {
+		rss.Channel.ItunesComplete = "Yes"
+	}
+
 	return nil
 }
 
 // newCategory creates a new <itunes:category> element. Possibily containing sub-elements.
-func (i Itunes) newCategory(c *Category) *itunesCategory {
+func (ap ApplePodcast) newCategory(c *Category) *itunesCategory {
 	if c == nil {
 		return nil
 	}
 	return &itunesCategory{
 		Text: c.Name,
-		Sub:  i.newCategory(c.Sub),
+		Sub:  ap.newCategory(c.Sub),
 	}
 }
 
