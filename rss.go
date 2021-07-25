@@ -113,11 +113,12 @@ func formatRSSAuthor(a *Author) string {
 }
 
 type rssXML struct {
-	XMLName   xml.Name `xml:"rss"`
-	Version   string   `xml:"version,attr"`
-	ContentNS string   `xml:"xmlns:content,attr"`
-	ItunesNS  string   `xml:"xmlns:itunes,attr,omitempty"`
-	Channel   *rssChannel
+	XMLName      xml.Name `xml:"rss"`
+	Version      string   `xml:"version,attr"`
+	ContentNS    string   `xml:"xmlns:content,attr"`
+	ItunesNS     string   `xml:"xmlns:itunes,attr,omitempty"`
+	GooglePlayNS string   `xml:"xmlns:googleplay,attr,omitempty"`
+	Channel      *rssChannel
 
 	minimize bool
 }
@@ -152,6 +153,8 @@ type rssChannel struct {
 	ItunesTitle      string            `xml:"itunes:title,omitempty"`
 	ItunesType       string            `xml:"itunes:type,omitempty"`
 	ItunesComplete   string            `xml:"itunes:complete,omitempty"`
+
+	GooglePlayCategories []*googlePlayCategory `xml:",omitempty"`
 
 	Items []*rssItem `xml:"item"`
 }
@@ -217,6 +220,11 @@ type itunesOwner struct {
 	XMLName xml.Name `xml:"itunes:owner"`
 	Email   string   `xml:"itunes:email,omitempty"`
 	Name    string   `xml:"itunes:name,omitempty"`
+}
+
+type googlePlayCategory struct {
+	XMLName xml.Name `xml:"googleplay:category"`
+	Text    string   `xml:"text,attr"`
 }
 
 // formatDuration formats a time.Duration in the format hh:mm:ss.
@@ -312,5 +320,27 @@ func (g Generator) populate(f Feed, rss *rssXML) error {
 	if rss.Channel != nil {
 		rss.Channel.Generator = g.Name
 	}
+	return nil
+}
+
+// GooglePlay describes a Google Play podcast supported RSS feed.
+type GooglePlay struct {
+	Categories []string
+}
+
+func (GooglePlay) name() string { return "GooglePlay" }
+
+func (gp GooglePlay) populate(f Feed, rss *rssXML) error {
+	if rss == nil || rss.Channel == nil {
+		return nil
+	}
+
+	rss.GooglePlayNS = "http://www.google.com/schemas/play-podcasts/1.0"
+
+	for _, cat := range gp.Categories {
+		v := &googlePlayCategory{Text: cat}
+		rss.Channel.GooglePlayCategories = append(rss.Channel.GooglePlayCategories, v)
+	}
+
 	return nil
 }
