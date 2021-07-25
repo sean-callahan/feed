@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -35,7 +36,11 @@ func RSS(feed Feed, opts ...Options) (string, error) {
 		return "", fmt.Errorf("xml marshal: %v", err)
 	}
 
-	return string(out), nil
+	sb := new(strings.Builder)
+	sb.WriteString(xml.Header)
+	sb.Write(out)
+
+	return sb.String(), nil
 }
 
 // newRSS creates a new RSS <rss> element for a Feed.

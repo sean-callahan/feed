@@ -39,3 +39,24 @@ func main() {
 
 	fmt.Println(rss)
 }
+
+#### Output
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Example Feed</title>
+    <link>https://github.com/sean-callahan/feed</link>
+    <description>An example feed that is generated</description>
+    <pubDate>Sun, 25 Jul 2021 04:21:30 +0000</pubDate>
+    <lastBuildDate>Sun, 25 Jul 2021 04:21:30 +0000</lastBuildDate>
+    <item>
+      <title>Example Item</title>
+      <link>https://github.com/sean-callahan/feed</link>
+      <description>First and only item of the feed</description>
+      <pubDate>Sun, 25 Jul 2021 04:21:30 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
+```
