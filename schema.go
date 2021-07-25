@@ -15,6 +15,7 @@ type Feed struct {
 
 	Explicit bool
 	Author   *Author
+	Owner    *Author
 	Image    *Image
 	Items    []*Item
 }
@@ -33,7 +34,8 @@ type Image struct {
 }
 
 type Link struct {
-	URL string
+	URL  string
+	Text string
 }
 
 type Category struct {
@@ -48,9 +50,11 @@ type Item struct {
 	Updated     time.Time
 	Title       string
 	Description string
+	Image       *Image
 	Author      *Author
 	Enclosure   *Enclosure
 	Duration    time.Duration
+	Explicit    bool
 }
 
 type Enclosure struct {

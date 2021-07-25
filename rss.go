@@ -118,6 +118,7 @@ type rssXML struct {
 	ContentNS    string   `xml:"xmlns:content,attr"`
 	ItunesNS     string   `xml:"xmlns:itunes,attr,omitempty"`
 	GooglePlayNS string   `xml:"xmlns:googleplay,attr,omitempty"`
+	PodcastNS    string   `xml:"xmlns:podcast,attr,omitempty"`
 	Channel      *rssChannel
 
 	minimize bool
@@ -145,16 +146,9 @@ type rssChannel struct {
 	Image          *rssImage
 	TextInput      *rssTextInput
 
-	ItunesImage      *itunesImage      `xml:",omitempty"`                // itunes required
-	ItunesCategories []*itunesCategory `xml:",omitempty"`                // itunes required
-	ItunesExplicit   string            `xml:"itunes:explicit,omitempty"` // itunes required
-	ItunesAuthor     string            `xml:"itunes:author,omitempty"`
-	ItunesOwner      *itunesOwner      `xml:"itunes:owner,omitempty"`
-	ItunesTitle      string            `xml:"itunes:title,omitempty"`
-	ItunesType       string            `xml:"itunes:type,omitempty"`
-	ItunesComplete   string            `xml:"itunes:complete,omitempty"`
-
-	GooglePlayCategories []*googlePlayCategory `xml:",omitempty"`
+	rssItunes
+	rssGooglePlay
+	rssPodcastIndex
 
 	Items []*rssItem `xml:"item"`
 }
@@ -173,7 +167,7 @@ type rssItem struct {
 	PubDate     string `xml:"pubDate,omitempty"`
 	Source      string `xml:"source,omitempty"`
 
-	ItunesDuration string `xml:"itunes:duration,omitempty"`
+	rssItunesItem
 }
 
 type rssImage struct {
@@ -205,6 +199,23 @@ type rssEnclosure struct {
 	Type    string   `xml:"type,attr"`
 }
 
+type rssItunes struct {
+	ItunesImage      *itunesImage      `xml:",omitempty"`                // itunes required
+	ItunesCategories []*itunesCategory `xml:",omitempty"`                // itunes required
+	ItunesExplicit   string            `xml:"itunes:explicit,omitempty"` // itunes required
+	ItunesAuthor     string            `xml:"itunes:author,omitempty"`
+	ItunesOwner      *itunesOwner      `xml:"itunes:owner,omitempty"`
+	ItunesTitle      string            `xml:"itunes:title,omitempty"`
+	ItunesType       string            `xml:"itunes:type,omitempty"`
+	ItunesComplete   string            `xml:"itunes:complete,omitempty"`
+}
+
+type rssItunesItem struct {
+	ItunesImage    *itunesImage `xml:",omitempty"`
+	ItunesDuration string       `xml:"itunes:duration,omitempty"`
+	ItunesExplicit string       `xml:"itunes:explicit,omitempty"`
+}
+
 type itunesImage struct {
 	XMLName xml.Name `xml:"itunes:image"`
 	Href    string   `xml:"href,attr"`
@@ -222,9 +233,23 @@ type itunesOwner struct {
 	Name    string   `xml:"itunes:name,omitempty"`
 }
 
+type rssGooglePlay struct {
+	GooglePlayCategories []*googlePlayCategory `xml:",omitempty"`
+}
+
 type googlePlayCategory struct {
 	XMLName xml.Name `xml:"googleplay:category"`
 	Text    string   `xml:"text,attr"`
+}
+
+type rssPodcastIndex struct {
+	PodcastFunding *rssPodcastFunding `xml:",omitempty"`
+}
+
+type rssPodcastFunding struct {
+	XMLName string `xml:"podcast:funding"`
+	URL     string `xml:"url,attr"`
+	Text    string `xml:",innerxml"`
 }
 
 // formatDuration formats a time.Duration in the format hh:mm:ss.
@@ -268,13 +293,30 @@ func (ap ApplePodcast) populate(f Feed, rss *rssXML) error {
 		rss.Channel.ItunesCategories = append(rss.Channel.ItunesCategories, ap.newCategory(&cat))
 	}
 	rss.Channel.ItunesExplicit = strconv.FormatBool(f.Explicit)
+
 	if f.Author != nil {
 		rss.Channel.ItunesAuthor = f.Author.Name
 	}
 
+	if f.Owner != nil {
+		rss.Channel.ItunesOwner = &itunesOwner{
+			Email: f.Owner.Email,
+			Name:  f.Owner.Name,
+		}
+	}
+
 	for i, item := range rss.Channel.Items {
-		if d := f.Items[i].Duration; d >= 0 {
+		src := f.Items[i]
+		if d := src.Duration; d > 0 {
 			item.ItunesDuration = formatDuration(d)
+		}
+		if v := src.Image; v != nil {
+			item.ItunesImage = &itunesImage{
+				Href: v.URL,
+			}
+		}
+		if v := src.Explicit; v {
+			item.ItunesExplicit = "true"
 		}
 	}
 
@@ -340,6 +382,29 @@ func (gp GooglePlay) populate(f Feed, rss *rssXML) error {
 	for _, cat := range gp.Categories {
 		v := &googlePlayCategory{Text: cat}
 		rss.Channel.GooglePlayCategories = append(rss.Channel.GooglePlayCategories, v)
+	}
+
+	return nil
+}
+
+type PodcastIndex struct {
+	Funding *Link
+}
+
+func (PodcastIndex) name() string { return "PodcastIndex" }
+
+func (p PodcastIndex) populate(f Feed, rss *rssXML) error {
+	if rss == nil || rss.Channel == nil {
+		return nil
+	}
+
+	rss.PodcastNS = "https://podcastindex.org/namespace/1.0"
+
+	if p.Funding != nil {
+		rss.Channel.PodcastFunding = &rssPodcastFunding{
+			URL:  p.Funding.URL,
+			Text: p.Funding.Text,
+		}
 	}
 
 	return nil
