@@ -56,6 +56,7 @@ func newRSS(f Feed) (*rssXML, error) {
 		Description:    f.Description,
 		Language:       f.Language,
 		Copyright:      f.Copyright,
+		Generator:      f.Generator,
 		ManagingEditor: formatRSSAuthor(f.Author),
 		PubDate:        f.Updated.Format(time.RFC1123Z),
 		LastBuildDate:  f.Updated.Format(time.RFC1123Z),
@@ -284,6 +285,7 @@ func (ap ApplePodcast) populate(f Feed, rss *rssXML) error {
 	if rss == nil || rss.Channel == nil {
 		return nil
 	}
+
 	rss.ItunesNS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
 
 	if f.Image != nil {
@@ -307,7 +309,11 @@ func (ap ApplePodcast) populate(f Feed, rss *rssXML) error {
 
 	for i, item := range rss.Channel.Items {
 		src := f.Items[i]
-		if d := src.Duration; d > 0 {
+		if src == nil || src.Enclosure == nil {
+			return fmt.Errorf("item at %d: must contain an enclosure", i)
+		}
+
+		if d := src.Enclosure.Duration; d > 0 {
 			item.ItunesDuration = formatDuration(d)
 		}
 		if v := src.Image; v != nil {
@@ -348,20 +354,6 @@ func (MinimizeOutput) name() string { return "MinimizeOutput" }
 
 func (m MinimizeOutput) populate(f Feed, rss *rssXML) error {
 	rss.minimize = bool(m)
-	return nil
-}
-
-// Generator defines the name of the program that generated the feed.
-type Generator struct {
-	Name string
-}
-
-func (Generator) name() string { return "Generator" }
-
-func (g Generator) populate(f Feed, rss *rssXML) error {
-	if rss.Channel != nil {
-		rss.Channel.Generator = g.Name
-	}
 	return nil
 }
 
